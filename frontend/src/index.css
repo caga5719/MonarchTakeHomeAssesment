@@ -247,14 +247,28 @@ body { min-height: 100vh; }
 .page-info { color: #64748b; font-size: 0.85rem; }
 
 /* Line items panel (inside expanded invoice row) */
-.line-items-panel { padding: 0.75rem 1rem 0.75rem 2rem; }
+.line-items-panel { padding: 0.75rem 1rem 0.75rem 1rem; }
+.panel-meta-wrapper {
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+.panel-meta-label {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.4rem;
+}
 .panel-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.25rem;
-  font-size: 0.78rem;
-  color: #64748b;
+  justify-content: center;
+  gap: 1.5rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #334155;
   margin-bottom: 0.75rem;
+  padding: 0.5rem 1.25rem;
 }
 .panel-loading {
   display: flex;
@@ -263,6 +277,12 @@ body { min-height: 100vh; }
 }
 .panel-error { color: #ef4444; padding: 0.75rem; font-size: 0.85rem; }
 .panel-empty { color: #94a3b8; padding: 0.75rem; font-size: 0.85rem; }
+
+/* Line items table inside expanded invoice rows */
+.li-table  { table-layout: fixed; width: 100%; }
+.li-desc   { white-space: normal; word-break: break-word; vertical-align: top; }
+.li-nowrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: top; }
+.li-gl-cell { white-space: normal; word-break: break-word; vertical-align: top; }
 
 /* Row highlight: mismatch inside InvoiceExplorer */
 .row-mismatch td { background: #fffbeb !important; }
@@ -311,6 +331,51 @@ body { min-height: 100vh; }
   font-size: 0.8rem;
   color: #475569;
   word-break: break-word;
+}
+
+/* Sortable column headers */
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+}
+.sortable-th:hover { color: #2563eb; }
+.sort-indicator { color: #94a3b8; font-size: 0.7rem; margin-left: 0.2rem; }
+.sortable-th:hover .sort-indicator { color: #3b82f6; }
+
+/* Inline section filter bar (inside collapsible sections) */
+.section-filter-bar {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0.75rem 0;
+}
+.section-filter-bar .filter-input { flex: 1; min-width: 140px; }
+.section-filter-count {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+/* Collapsible section header */
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.collapsible-header:hover .chart-title { color: #2563eb; }
+.collapse-chevron {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  flex-shrink: 0;
+  margin-left: 0.75rem;
 }
 
 /* Responsive nav */

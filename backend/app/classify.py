@@ -187,6 +187,14 @@ def classify_invoice(invoice_id: int, session: Session, client: anthropic.Anthro
             needs_review += 1
 
     session.commit()
+
+    # Mark invoice as processed so reruns skip it
+    session.execute(
+        text("UPDATE invoices SET processed = 1 WHERE id = :invoice_id"),
+        {"invoice_id": invoice_id},
+    )
+    session.commit()
+
     skipped = len(items_list) - classified - needs_review
     return {"classified": classified, "needs_review": needs_review, "skipped": skipped}
 
@@ -196,14 +204,13 @@ def classify_invoice(invoice_id: int, session: Session, client: anthropic.Anthro
 # ---------------------------------------------------------------------------
 
 def classify_all(session: Session, client: anthropic.Anthropic) -> None:
-    """Classify all invoices that have at least one unclassified line item."""
+    """Classify all invoices not yet processed by Claude."""
     invoice_ids = session.execute(text("""
-        SELECT DISTINCT invoice_id
-        FROM line_items
-        WHERE assigned_gl_code IS NULL
+        SELECT id AS invoice_id
+        FROM invoices
+        WHERE processed = 0
           AND needs_review = 0
-          AND quantity IS NOT NULL
-        ORDER BY invoice_id
+        ORDER BY id
     """)).mappings().all()
 
     total_invoices = len(invoice_ids)

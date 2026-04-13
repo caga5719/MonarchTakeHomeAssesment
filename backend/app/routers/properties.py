@@ -20,6 +20,7 @@ def items_per_property(session: Session = Depends(get_session)):
         FROM line_items li
         JOIN invoices inv ON inv.id = li.invoice_id
         WHERE inv.property_code IS NOT NULL
+          AND inv.processed = 1
         GROUP BY inv.property_code
         ORDER BY total_spend DESC
     """)).mappings().all()

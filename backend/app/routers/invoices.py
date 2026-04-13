@@ -19,7 +19,7 @@ def list_invoices(
     session: Session = Depends(get_session),
 ):
     """Paginated list of invoices with optional filters."""
-    conditions = []
+    conditions = ["inv.processed = 1"]
     params: dict = {}
 
     if property:
@@ -99,7 +99,17 @@ def get_invoice(invoice_number: str, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail=f"Invoice '{invoice_number}' not found")
 
     li_rows = session.execute(
-        text("SELECT * FROM line_items WHERE invoice_id = :inv_id ORDER BY line_number"),
+        text("""
+        SELECT
+            id, invoice_id, line_number, description, asin, quantity,
+            ROUND(unit_price, 2) AS unit_price,
+            ROUND(subtotal, 2)   AS subtotal,
+            tax_rate, assigned_gl_code, assigned_gl_desc,
+            classification_note, needs_review
+        FROM line_items
+        WHERE invoice_id = :inv_id
+        ORDER BY line_number
+        """),
         {"inv_id": inv["id"]},
     ).mappings().all()
 

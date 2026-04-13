@@ -49,6 +49,8 @@ export default function ItemsPerGL() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
+  const [codeSearch, setCodeSearch] = useState('')
+  const [descSearch, setDescSearch] = useState('')
 
   useEffect(() => {
     getItemsPerGL()
@@ -59,6 +61,12 @@ export default function ItemsPerGL() {
 
   if (loading) return <LoadingSpinner />
   if (error) return <p className="error-msg">Failed to load: {error}</p>
+
+  const filtered = data.filter(r => {
+    if (codeSearch && !String(r.gl_code).includes(codeSearch.trim())) return false
+    if (descSearch && !r.gl_desc.toLowerCase().includes(descSearch.trim().toLowerCase())) return false
+    return true
+  })
 
   const top15 = [...data].sort((a, b) => b.item_count - a.item_count).slice(0, 15)
 
@@ -106,6 +114,28 @@ export default function ItemsPerGL() {
 
       <div className="section-card">
         <h2 className="chart-title">All GL Categories — click a row to expand line items</h2>
+        <div className="filter-bar">
+          <input
+            className="filter-input filter-input-sm"
+            type="text"
+            placeholder="GL code…"
+            value={codeSearch}
+            onChange={e => setCodeSearch(e.target.value)}
+          />
+          <input
+            className="filter-input"
+            type="text"
+            placeholder="GL description…"
+            value={descSearch}
+            onChange={e => setDescSearch(e.target.value)}
+          />
+          {(codeSearch || descSearch) && (
+            <button className="filter-clear" onClick={() => { setCodeSearch(''); setDescSearch('') }}>Clear</button>
+          )}
+        </div>
+        {filtered.length === 0 && (
+          <p className="empty-msg" style={{ padding: '1rem' }}>No GL categories match.</p>
+        )}
         <div className="table-wrap">
           <table className="data-table">
             <thead>
@@ -118,7 +148,7 @@ export default function ItemsPerGL() {
               </tr>
             </thead>
             <tbody>
-              {data.map(row => {
+              {filtered.map(row => {
                 const open = expanded.has(row.gl_code)
                 return (
                   <>

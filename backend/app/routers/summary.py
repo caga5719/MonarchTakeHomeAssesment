@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api")
 def summary(session: Session = Depends(get_session)):
     """High-level dashboard numbers."""
     total_invoices = session.execute(
-        text("SELECT COUNT(*) AS c FROM invoices")
+        text("SELECT COUNT(*) AS c FROM invoices WHERE processed = 1")
     ).mappings().first()["c"]
 
     total_spend = session.execute(text("""

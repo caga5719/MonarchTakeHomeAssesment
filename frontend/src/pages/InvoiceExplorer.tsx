@@ -6,7 +6,12 @@ import {
 import LoadingSpinner from '../components/LoadingSpinner'
 
 const fmtCurrency = (n: number | null) =>
-  n == null ? '—' : n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+  n == null ? '—' : n.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
 
 const fmtDate = (s: string | null) => (s ? s.slice(0, 10) : '—')
 
@@ -44,25 +49,35 @@ function LineItemsPanel({
 
   return (
     <div className="line-items-panel">
-      <div className="panel-meta">
-        <span>PO #{detail.po_number ?? '—'}</span>
-        <span>Purchaser: {detail.purchaser ?? '—'}</span>
-        <span>Invoice GL: {detail.invoice_gl_code ? `${detail.invoice_gl_code} — ${detail.invoice_gl_desc ?? ''}` : '—'}</span>
-        {detail.subtotal != null && <span>Subtotal: {fmtCurrency(detail.subtotal)}</span>}
-        {detail.tax != null && <span>Tax: {fmtCurrency(detail.tax)}</span>}
+      <div className="panel-meta-wrapper">
+        <span className="panel-meta-label">Order Overview</span>
+        <div className="panel-meta">
+          <span><strong>PO #</strong> {detail.po_number ?? '—'}</span>
+          <span><strong>Purchaser:</strong> {detail.purchaser ?? '—'}</span>
+          <span><strong>Invoice GL Code:</strong> {detail.invoice_gl_code ? `${detail.invoice_gl_code} — ${detail.invoice_gl_desc ?? ''}` : '—'}</span>
+          {detail.tax != null && <span><strong>Tax:</strong> {fmtCurrency(detail.tax)}</span>}
+        </div>
       </div>
       <div className="table-wrap">
-        <table className="data-table nested-table">
+        <table className="data-table nested-table li-table">
+          <colgroup>
+            <col style={{ width: '40px' }} />    {/* # */}
+            <col style={{ width: '22%' }} />      {/* Description */}
+            <col style={{ width: '110px' }} />    {/* ASIN */}
+            <col style={{ width: '48px' }} />     {/* Qty */}
+            <col style={{ width: '90px' }} />     {/* Unit Price */}
+            <col style={{ width: '90px' }} />     {/* Subtotal */}
+            <col style={{ width: '30%' }} />      {/* AI-Assigned GL */}
+          </colgroup>
           <thead>
             <tr>
-              <th>#</th>
+              <th style={{ textAlign: 'center' }}>#</th>
               <th>Description</th>
-              <th>ASIN</th>
-              <th style={{ textAlign: 'right' }}>Qty</th>
-              <th style={{ textAlign: 'right' }}>Unit Price</th>
-              <th style={{ textAlign: 'right' }}>Subtotal</th>
-              <th>Invoice GL</th>
-              <th>AI-Assigned GL</th>
+              <th style={{ textAlign: 'center' }}>ASIN</th>
+              <th style={{ textAlign: 'center' }}>Qty</th>
+              <th style={{ textAlign: 'center' }}>Unit Price</th>
+              <th style={{ textAlign: 'center' }}>Subtotal</th>
+              <th style={{ textAlign: 'center' }}>AI-Assigned Line Item GL Code</th>
             </tr>
           </thead>
           <tbody>
@@ -70,27 +85,24 @@ function LineItemsPanel({
               const mismatch = isMismatch(item, invoiceGLCode)
               return (
                 <tr key={item.id} className={mismatch ? 'row-mismatch' : ''}>
-                  <td className="mono">{item.line_number ?? '—'}</td>
-                  <td className="desc-cell">{item.description}</td>
-                  <td className="mono">{item.asin ?? '—'}</td>
-                  <td style={{ textAlign: 'right' }}>{item.quantity ?? '—'}</td>
-                  <td style={{ textAlign: 'right' }}>{fmtCurrency(item.unit_price)}</td>
-                  <td style={{ textAlign: 'right' }}>{fmtCurrency(item.subtotal)}</td>
-                  <td className="mono">
-                    {invoiceGLCode ?? '—'}
-                  </td>
-                  <td>
+                  <td className="mono" style={{ textAlign: 'center' }}>{item.line_number ?? '—'}</td>
+                  <td className="li-desc">{item.description}</td>
+                  <td className="mono li-nowrap" style={{ textAlign: 'center' }}>{item.asin ?? '—'}</td>
+                  <td className="li-nowrap" style={{ textAlign: 'center' }}>{item.quantity ?? '—'}</td>
+                  <td className="li-nowrap" style={{ textAlign: 'center' }}>{fmtCurrency(item.unit_price)}</td>
+                  <td className="li-nowrap" style={{ textAlign: 'center' }}>{fmtCurrency(item.subtotal)}</td>
+                  <td className="li-gl-cell" style={{ textAlign: 'center' }}>
                     {item.needs_review ? (
                       <span className="badge badge-review" title={item.classification_note ?? ''}>
                         Needs Review
                       </span>
                     ) : item.assigned_gl_code != null ? (
-                      <span className={mismatch ? 'gl-mismatch-inline' : ''}>
-                        <span className="mono">{item.assigned_gl_code}</span>
+                      <>
+                        <span className={`mono${mismatch ? ' gl-mismatch-inline' : ''}`}>{item.assigned_gl_code}</span>
                         {item.assigned_gl_desc && (
                           <span className="gl-desc-small"> {item.assigned_gl_desc}</span>
                         )}
-                      </span>
+                      </>
                     ) : '—'}
                   </td>
                 </tr>
@@ -165,6 +177,23 @@ export default function InvoiceExplorer() {
     <div className="page">
       <h1 className="page-title">Invoice Explorer</h1>
 
+      <div className="section-card info-card">
+        <p>
+          Browse and search all processed invoices. Click any row to expand it and view its individual line items with AI-assigned GL classifications.
+        </p>
+        <p style={{ marginTop: '0.6rem' }}>
+          <strong>Status</strong> — <span className="badge badge-ok">OK</span> invoices have a recognized property code and fully classified line items.{' '}
+          <span className="badge badge-review">Needs Review</span> invoices have an unrecognized property code and require manual resolution before line items can be classified.
+        </p>
+        <p style={{ marginTop: '0.6rem' }}>
+          <strong>AI-Assigned GL</strong> — each line item is independently classified by Claude AI based on its description, regardless of the invoice-level GL code.{' '}
+          <span className="badge badge-review">Needs Review</span> on a line item means the AI could not confidently assign a GL code; hover the badge to see the reason.
+        </p>
+        <p style={{ marginTop: '0.6rem' }}>
+          <strong>Row highlighting</strong> — line items highlighted in <span style={{ background: '#fffbeb', padding: '0.1rem 0.4rem', borderRadius: '3px', fontSize: '0.82rem', border: '1px solid #fde68a' }}>amber</span> indicate that the AI-assigned GL differs from the invoice-level GL code, suggesting the buyer's original coding may not match the item's actual category.
+        </p>
+      </div>
+
       {/* Filter bar */}
       <div className="filter-bar">
         <input
@@ -223,13 +252,13 @@ export default function InvoiceExplorer() {
                   <thead>
                     <tr>
                       <th></th>
-                      <th>Invoice #</th>
-                      <th>Date</th>
-                      <th>Property</th>
-                      <th>Purchaser</th>
-                      <th>Invoice GL</th>
-                      <th style={{ textAlign: 'right' }}>Total</th>
-                      <th>Status</th>
+                      <th style={{ textAlign: 'center' }}>Invoice #</th>
+                      <th style={{ textAlign: 'center' }}>Date</th>
+                      <th style={{ textAlign: 'center' }}>Property</th>
+                      <th style={{ textAlign: 'center' }}>Purchaser</th>
+                      <th style={{ textAlign: 'center' }}>Invoice GL Code</th>
+                      <th style={{ textAlign: 'center' }}>Total</th>
+                      <th style={{ textAlign: 'center' }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -243,19 +272,19 @@ export default function InvoiceExplorer() {
                             onClick={() => toggleRow(inv.id)}
                           >
                             <td className="expand-toggle">{open ? '▾' : '▸'}</td>
-                            <td className="mono">{inv.invoice_number}</td>
-                            <td className="mono">{fmtDate(inv.invoice_date)}</td>
-                            <td>{inv.property_code ?? '—'}</td>
-                            <td>{inv.purchaser ?? '—'}</td>
-                            <td className="mono">
+                            <td className="mono" style={{ textAlign: 'center' }}>{inv.invoice_number}</td>
+                            <td className="mono" style={{ textAlign: 'center' }}>{fmtDate(inv.invoice_date)}</td>
+                            <td style={{ textAlign: 'center' }}>{inv.property_code ?? '—'}</td>
+                            <td style={{ textAlign: 'center' }}>{inv.purchaser ?? '—'}</td>
+                            <td className="mono" style={{ textAlign: 'center' }}>
                               {inv.invoice_gl_code != null
                                 ? `${inv.invoice_gl_code}${inv.invoice_gl_desc ? ` — ${inv.invoice_gl_desc}` : ''}`
                                 : '—'}
                             </td>
-                            <td style={{ textAlign: 'right' }}>
+                            <td style={{ textAlign: 'center' }}>
                               {fmtCurrency(inv.total_amount)}
                             </td>
-                            <td>
+                            <td style={{ textAlign: 'center' }}>
                               {inv.needs_review
                                 ? <span className="badge badge-review">Needs Review</span>
                                 : <span className="badge badge-ok">OK</span>}

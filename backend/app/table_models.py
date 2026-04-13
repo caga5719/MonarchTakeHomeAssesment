@@ -46,6 +46,7 @@ class Invoice(SQLModel, table=True):
     total_amount: Optional[float] = None
     filename: str
     needs_review: int = 0                         # 1 when property_code not in properties table
+    processed: int = 0                            # 1 when Claude has classified all line items
 
 
 class LineItem(SQLModel, table=True):
