@@ -47,7 +47,7 @@ Each Amazon Business invoice contains:
 |---|---|---|
 | Backend API | **FastAPI** (Python) | Async, clean type annotations, auto-generates OpenAPI docs; Python is also the natural fit for PDF parsing and Claude API integration |
 | Frontend | **React + Recharts** | Component-based, Recharts integrates well with React and covers all required chart types (bar, pie, table) without heavy dependencies |
-| Database | **SQLite** | Already present in the repo (`invoice_data.db`); zero setup for local run; migrations via Alembic or plain SQL scripts |
+| Database | **SQLite + SQLModel** | SQLite for zero-setup local runs; SQLModel (SQLAlchemy + Pydantic) defines the schema as Python classes in `table_models.py`, provides type-safe session management, and supports CRUD for the review queue without raw DDL |
 | PDF Parsing | **pdfplumber** | Handles layout-aware extraction better than raw `pdftotext`; the Amazon invoice format is consistent enough that regex + coordinate-based extraction is reliable |
 | GL Classification | **Claude API (claude-haiku-4-5)** | Line-item descriptions are natural language product names (e.g., "Dryer Rear Drum Felt Seal Replacement Compatible with Whirlpool…"); semantic understanding is needed to correctly map to GL categories; Haiku is fast and cost-efficient for batch classification |
 | Package management | **uv** (Python), **npm** (JS) | uv is fast and handles virtual envs cleanly |
@@ -93,55 +93,36 @@ Each Amazon Business invoice contains:
 
 ## 5. Database Schema
 
-```sql
--- Reference tables (seeded at startup from xlsx files)
-CREATE TABLE gl_codes (
-    scode   INTEGER PRIMARY KEY,
-    sdesc   TEXT NOT NULL
-);
+The schema is defined as SQLModel table classes in `backend/app/table_models.py` — the single source of truth. `init_db()` calls `SQLModel.metadata.create_all(engine)` which creates tables that don't exist yet without touching existing data.
 
-CREATE TABLE properties (
-    website_id  TEXT,
-    yardi_code  TEXT PRIMARY KEY,  -- matches property_code on invoices
-    name        TEXT,              -- from "Other Properties" sheet where available
-    state       TEXT,
-    unit_count  INTEGER
-);
+```python
+# backend/app/table_models.py (abbreviated)
 
--- Invoice data
-CREATE TABLE invoices (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    invoice_number  TEXT UNIQUE NOT NULL,
-    property_code   TEXT REFERENCES properties(yardi_code),
-    invoice_gl_code INTEGER REFERENCES gl_codes(scode),  -- header-level GL (single, per invoice)
-    invoice_date    DATE,
-    due_date        DATE,
-    purchaser       TEXT,
-    po_number       TEXT,
-    subtotal        REAL,
-    tax             REAL,
-    total_amount    REAL,
-    filename        TEXT NOT NULL,
-    needs_review    BOOLEAN DEFAULT 0  -- TRUE when property_code not found in properties table; no line items are stored
-);
+class GLCode(SQLModel, table=True):       # gl_codes
+    scode: int = Field(primary_key=True)
+    sdesc: str
 
-CREATE TABLE line_items (
-    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-    invoice_id              INTEGER REFERENCES invoices(id),
-    line_number             INTEGER,
-    description             TEXT NOT NULL,
-    asin                    TEXT,
-    quantity                REAL,
-    unit_price              REAL,
-    subtotal                REAL,
-    tax_rate                REAL,
-    -- AI-assigned classification (may differ from invoice-level GL)
-    assigned_gl_code        INTEGER REFERENCES gl_codes(scode),
-    assigned_gl_desc        TEXT,
-    classification_note     TEXT,  -- brief reasoning from Claude
-    needs_review            BOOLEAN DEFAULT 0   -- TRUE when Claude returned null (no confident GL match)
-);
+class Property(SQLModel, table=True):     # properties
+    yardi_code: str = Field(primary_key=True)  # uppercase
+    website_id / name / state / unit_count: Optional[...]
+
+class Invoice(SQLModel, table=True):      # invoices
+    id: Optional[int] = Field(primary_key=True)
+    invoice_number: str = Field(unique=True)
+    property_code / invoice_gl_code / invoice_date / due_date /
+    purchaser / po_number / subtotal / tax / total_amount / filename: ...
+    needs_review: int = 0   # 1 when property_code not in properties table
+
+class LineItem(SQLModel, table=True):     # line_items
+    id: Optional[int] = Field(primary_key=True)
+    invoice_id: Optional[int] = Field(foreign_key="invoices.id")
+    line_number / description / asin / quantity / unit_price /
+    subtotal / tax_rate: ...
+    assigned_gl_code / assigned_gl_desc / classification_note: Optional[...]
+    needs_review: int = 0   # 1 when Claude returned null (no confident GL match)
 ```
+
+Indexes on `invoices.property_code`, `line_items.invoice_id`, and `line_items.assigned_gl_code` are declared via `__table_args__` on the respective models.
 
 ---
 

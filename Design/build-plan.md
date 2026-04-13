@@ -67,17 +67,17 @@ TakeHomeAssesment/
    ```bash
    cd backend
    uv init --python 3.12
-   uv add fastapi uvicorn sqlalchemy pdfplumber openpyxl anthropic python-dotenv
+   uv add fastapi uvicorn sqlmodel pdfplumber openpyxl anthropic python-dotenv
    ```
 
-2. **Write `schema.sql`** — DDL for all four tables:
-   - `gl_codes (scode INTEGER PK, sdesc TEXT)`
-   - `properties (yardi_code TEXT PK, website_id TEXT, name TEXT, state TEXT, unit_count INTEGER)`
-   - `invoices (id, invoice_number UNIQUE, property_code FK, invoice_gl_code FK, invoice_date, due_date, purchaser, po_number, subtotal, tax, total_amount, filename, needs_review BOOLEAN DEFAULT 0)`
-   - `line_items (id, invoice_id FK, line_number, description, asin, quantity, unit_price, subtotal, tax_rate, assigned_gl_code FK, assigned_gl_desc, classification_note, needs_review BOOLEAN DEFAULT 0)`
-   - Add indexes on `invoices.property_code`, `line_items.invoice_id`, `line_items.assigned_gl_code`
+2. **Write `table_models.py`** — SQLModel table classes (replaces `schema.sql` as the schema source of truth):
+   - `GLCode` → `gl_codes (scode INTEGER PK, sdesc TEXT)`
+   - `Property` → `properties (yardi_code TEXT PK, website_id, name, state, unit_count)`
+   - `Invoice` → `invoices (id PK, invoice_number UNIQUE, property_code, invoice_gl_code, dates, amounts, filename, needs_review INT DEFAULT 0)`
+   - `LineItem` → `line_items (id PK, invoice_id FK, line_number, description, asin, qty, prices, assigned_gl_code, assigned_gl_desc, classification_note, needs_review INT DEFAULT 0)`
+   - Declare indexes via `__table_args__` on `Invoice` and `LineItem`
 
-3. **Write `database.py`** — SQLAlchemy engine pointed at `../invoice_data.db`, session factory, `init_db()` function that runs `schema.sql`
+3. **Write `database.py`** — SQLModel engine pointed at `../invoice_data.db` with `check_same_thread=False`; `init_db()` calls `SQLModel.metadata.create_all(engine)`; `get_session()` yields a `Session` for FastAPI dependency injection
 
 4. **Write `seed.py`** — reads both xlsx files with openpyxl and upserts into `gl_codes` and `properties`:
    - `GL List.xlsx` → sheet `ySQL_0_10042026110022 (1)`, columns `scode` / `sdesc`
@@ -311,7 +311,8 @@ This produces ~120–140 codes and captures edge cases like `6738 HARDWARE`, `67
    - Startup event: call `init_db()` to ensure schema exists
 
 2. **Write the four router files** under `backend/app/routers/`:
-   - Use raw SQL via `db.execute(text(...))` — SQLAlchemy Core is sufficient; no need for full ORM for these read-heavy queries
+   - Use `Depends(get_session)` from `app.database` — no local `get_db()` needed in each router
+   - Analytical aggregation queries (GROUP BY, SUM, JOIN) use `session.execute(text(...)).mappings()` with `:name` named parameters; simple lookups use `session.exec(select(...))`
    - All dollar amounts should be rounded to 2 decimal places before returning
    - Return `[]` not errors when no data exists
 
