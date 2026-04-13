@@ -1,0 +1,321 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  font-family: Inter, system-ui, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  color: #1e293b;
+  background: #f1f5f9;
+  -webkit-font-smoothing: antialiased;
+}
+
+body { min-height: 100vh; }
+
+/* ── Nav ─────────────────────────────────────────────────────── */
+.top-nav {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 0 2rem;
+  height: 52px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.nav-brand {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #0f172a;
+  white-space: nowrap;
+}
+.nav-links { display: flex; gap: 0.25rem; }
+.nav-link {
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #475569;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.nav-link:hover { background: #f1f5f9; color: #0f172a; }
+.nav-link.active { background: #eff6ff; color: #2563eb; }
+
+/* ── Layout ──────────────────────────────────────────────────── */
+.main-content { padding: 1.5rem 2rem 3rem; }
+.page { max-width: 1400px; margin: 0 auto; }
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 1.25rem;
+}
+
+/* ── Stat cards ──────────────────────────────────────────────── */
+.stat-grid {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.stat-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  min-width: 150px;
+  flex: 1;
+}
+.stat-label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+.stat-value { font-size: 1.5rem; font-weight: 700; color: #0f172a; margin-top: 0.25rem; }
+.stat-sub { font-size: 0.75rem; color: #94a3b8; margin-top: 0.2rem; }
+
+/* ── Chart layout ────────────────────────────────────────────── */
+.chart-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.chart-card, .section-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.25rem;
+  min-width: 0;
+  margin-bottom: 1.5rem;
+}
+.chart-card { flex: 1; }
+.chart-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 1rem;
+}
+
+/* ── Tables ──────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.data-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+  user-select: none;
+}
+.data-table td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  vertical-align: top;
+}
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover td { background: #f8fafc; }
+.sort-arrow { color: #3b82f6; }
+
+/* Expandable GL rows */
+.expandable-row { cursor: pointer; }
+.expandable-row:hover td { background: #eff6ff !important; }
+.expand-toggle { color: #94a3b8; font-size: 0.8rem; width: 24px; }
+.expanded-content td { padding: 0; background: #f8fafc; }
+.nested-table { font-size: 0.8rem; }
+.nested-table th { background: #f1f5f9; font-size: 0.7rem; }
+.nested-table td { border-bottom-color: #e2e8f0; }
+.desc-cell { max-width: 480px; word-break: break-word; }
+.mono { font-family: monospace; }
+
+/* ── Spinner ─────────────────────────────────────────────────── */
+.spinner-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Pie tooltip ─────────────────────────────────────────────── */
+.pie-tooltip {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  font-size: 0.82rem;
+  max-width: 240px;
+}
+.pie-tooltip-name {
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 0.3rem;
+  word-break: break-word;
+}
+.pie-tooltip-spend {
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.2rem;
+}
+.pie-tooltip-pct {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+/* ── Misc ─────────────────────────────────────────────────────── */
+.error-msg { color: #ef4444; padding: 2rem; }
+.empty-msg { color: #94a3b8; padding: 1rem 0; }
+
+/* ── Phase 6: Invoice Explorer ───────────────────────────────── */
+.filter-bar {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+  align-items: center;
+}
+.filter-input {
+  padding: 0.45rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  font-size: 0.875rem;
+  color: #1e293b;
+  background: #fff;
+  outline: none;
+  flex: 1;
+  min-width: 200px;
+  transition: border-color 0.15s;
+}
+.filter-input:focus { border-color: #3b82f6; }
+.filter-input-sm { flex: 0 1 140px; min-width: 100px; }
+.filter-clear {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.filter-clear:hover { background: #f1f5f9; color: #0f172a; }
+
+.table-result-count {
+  padding: 0.65rem 1.25rem;
+  font-size: 0.8rem;
+  color: #64748b;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.page-btn {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.page-btn:hover:not(:disabled) { background: #f1f5f9; }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.page-info { color: #64748b; font-size: 0.85rem; }
+
+/* Line items panel (inside expanded invoice row) */
+.line-items-panel { padding: 0.75rem 1rem 0.75rem 2rem; }
+.panel-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-bottom: 0.75rem;
+}
+.panel-loading {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+}
+.panel-error { color: #ef4444; padding: 0.75rem; font-size: 0.85rem; }
+.panel-empty { color: #94a3b8; padding: 0.75rem; font-size: 0.85rem; }
+
+/* Row highlight: mismatch inside InvoiceExplorer */
+.row-mismatch td { background: #fffbeb !important; }
+.gl-mismatch-inline { color: #b45309; font-weight: 600; }
+.gl-desc-small { font-size: 0.78rem; color: #64748b; font-weight: 400; margin-left: 0.2rem; }
+
+/* Status badges */
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge-ok { background: #dcfce7; color: #15803d; }
+.badge-review { background: #ede9fe; color: #6d28d9; }
+
+/* ── Phase 6: Mismatches page ────────────────────────────────── */
+.info-card {
+  color: #334155;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
+}
+
+/* Mismatch row colors */
+.row-mismatch-near td { background: #fefce8 !important; }
+.row-mismatch-far td  { background: #fef2f2 !important; }
+.row-needs-review td  { background: #f5f3ff !important; }
+
+/* Mismatch severity badges */
+.mismatch-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mismatch-near { background: #fef9c3; color: #854d0e; }
+.mismatch-far  { background: #fee2e2; color: #991b1b; }
+
+.note-cell {
+  max-width: 400px;
+  font-size: 0.8rem;
+  color: #475569;
+  word-break: break-word;
+}
+
+/* Responsive nav */
+@media (max-width: 768px) {
+  .top-nav { flex-wrap: wrap; height: auto; padding: 0.5rem 1rem; gap: 0.5rem; }
+  .nav-links { flex-wrap: wrap; gap: 0.15rem; }
+  .main-content { padding: 1rem; }
+}
