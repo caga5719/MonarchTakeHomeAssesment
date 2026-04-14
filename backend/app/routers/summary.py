@@ -22,7 +22,10 @@ def summary(session: Session = Depends(get_session)):
     """)).mappings().first()["s"]
 
     total_line_items = session.execute(
-        text("SELECT COUNT(*) AS c FROM line_items")
+        text("""
+            SELECT COUNT(*) AS c FROM line_items
+            WHERE assigned_gl_code IS NOT NULL OR needs_review = 1
+        """)
     ).mappings().first()["c"]
 
     properties_count = session.execute(text(

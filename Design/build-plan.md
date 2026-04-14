@@ -442,6 +442,63 @@ This produces ~120–140 codes and captures edge cases like `6738 HARDWARE`, `67
 
 ---
 
+## Phase 6 — Extended Views, Polish, and README
+
+**Goal**: Add the bonus views, finalize styling, ensure the app runs cleanly end-to-end from a fresh clone, and write the README.
+
+**Prerequisites**: Phase 5 complete — all required views working.
+
+**Context to load**:
+- `Design/design.md` sections 8 (extended views) and 11 (production considerations)
+- `Design/build-plan.md` Phase 4 endpoint table (mismatches endpoint)
+
+### Tasks
+
+1. **Invoice Explorer page** (`pages/InvoiceExplorer.tsx`):
+   - Search bar (filters by invoice number, property code, or purchaser name) — debounced, calls `/api/invoices?search=`
+   - Filter dropdowns: by property code, by invoice-level GL
+   - Paginated table of invoices (invoice #, date, property, purchaser, total, invoice GL)
+   - Click a row → expand (or navigate) to show all line items with their **AI-assigned GL code** vs the invoice-level GL — highlight mismatches in amber
+
+2. **GL Mismatch view** (`pages/Mismatches.tsx`):
+   - Intro text explaining what a mismatch means (AI disagrees with buyer's coding)
+   - Table: invoice number, property, item description, invoice GL (original), AI-assigned GL, subtotal
+   - Color-code: same category family (e.g., both in 67xx) = yellow; different category family = red
+   - Summary stat: "X of Y line items (Z%) were reclassified by AI"
+
+3. **Polish**:
+   - Consistent color palette using Recharts' `COLORS` array
+   - Responsive layout (nav collapses on small screens)
+   - Empty states (show a message when no data matches a filter)
+   - Error boundaries around chart components so one failed fetch doesn't crash the page
+
+4. **End-to-end startup script** (`run.sh`):
+   ```bash
+   #!/bin/bash
+   set -e
+   cd backend && uv run python app/seed.py && uv run python app/ingest.py && uv run python app/classify.py
+   uv run uvicorn app.main:app --port 8000 &
+   cd ../frontend && npm run build && npx serve dist -l 3000
+   ```
+   Or simpler: document how to run backend + frontend separately in README.
+
+5. **Write `README.md`** (manually written, not generated) covering:
+   - What the app does
+   - How to run it (step-by-step: set `ANTHROPIC_API_KEY`, run seed/ingest/classify, start API, start frontend)
+   - Architecture and design decisions (reference `Design/design.md`)
+   - Assumptions made about the data
+   - Known limitations
+   - What I'd build or change for production
+
+### Done When
+- Invoice Explorer search works with real queries
+- Mismatch view loads and shows meaningful data
+- `README.md` is complete and accurate
+- The app can be started from scratch following only the README instructions
+- All four bonus views are accessible from the nav
+
+---
+
 ## Cross-Phase Notes
 
 ### State shared between phases

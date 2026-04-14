@@ -85,6 +85,7 @@ export default function GLSpend() {
   const top15 = data.slice(0, 15)
   const pieData = data.slice(0, 10)
   const totalClassifiedSpend = data.reduce((sum, d) => sum + d.total_spend, 0)
+  const totalClassifiedItems = data.reduce((sum, d) => sum + d.item_count, 0)
 
   return (
     <div className="page">
@@ -93,9 +94,14 @@ export default function GLSpend() {
       {summary && (
         <div className="stat-grid">
           <StatCard label="Total Invoices" value={summary.total_invoices.toLocaleString()} />
-          <StatCard label="Classified Spend" value={fmtFull(summary.total_spend)} />
+          <StatCard label="Classified Spend" value={fmtFull(totalClassifiedSpend)} />
           <StatCard label="Unique GL Codes" value={data.length.toLocaleString()} />
           <StatCard label="Properties" value={summary.properties_count.toLocaleString()} />
+          <StatCard
+            label="Total Processed Line Items"
+            value={summary.total_line_items.toLocaleString()}
+            sub={`${totalClassifiedItems.toLocaleString()} line items successfully classified by AI`}
+          />
           <StatCard
             label="Needs Review"
             value={summary.needs_review_count.toLocaleString()}
