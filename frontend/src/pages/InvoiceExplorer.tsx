@@ -27,9 +27,11 @@ function isMismatch(item: LineItemDetail, invoiceGLCode: number | null) {
 function LineItemsPanel({
   invoiceNumber,
   invoiceGLCode,
+  lineItemGlFilter,
 }: {
   invoiceNumber: string
   invoiceGLCode: number | null
+  lineItemGlFilter: string
 }) {
   const [detail, setDetail] = useState<InvoiceDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -47,6 +49,10 @@ function LineItemsPanel({
   if (!detail || detail.line_items.length === 0)
     return <div className="panel-empty">No line items found.</div>
 
+  const visibleItems = lineItemGlFilter
+    ? detail.line_items.filter(item => String(item.assigned_gl_code) === lineItemGlFilter.trim())
+    : detail.line_items
+
   return (
     <div className="line-items-panel">
       <div className="panel-meta-wrapper">
@@ -55,7 +61,6 @@ function LineItemsPanel({
           <span><strong>PO #</strong> {detail.po_number ?? '—'}</span>
           <span><strong>Purchaser:</strong> {detail.purchaser ?? '—'}</span>
           <span><strong>Invoice GL Code:</strong> {detail.invoice_gl_code ? `${detail.invoice_gl_code} — ${detail.invoice_gl_desc ?? ''}` : '—'}</span>
-          {detail.tax != null && <span><strong>Tax:</strong> {fmtCurrency(detail.tax)}</span>}
         </div>
       </div>
       <div className="table-wrap">
@@ -81,7 +86,7 @@ function LineItemsPanel({
             </tr>
           </thead>
           <tbody>
-            {detail.line_items.map(item => {
+            {visibleItems.map(item => {
               const mismatch = isMismatch(item, invoiceGLCode)
               return (
                 <tr key={item.id} className={mismatch ? 'row-mismatch' : ''}>
@@ -125,6 +130,7 @@ export default function InvoiceExplorer() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [propertyFilter, setPropertyFilter] = useState('')
   const [glFilter, setGlFilter] = useState('')
+  const [lineItemGlFilter, setLineItemGlFilter] = useState('')
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -151,17 +157,18 @@ export default function InvoiceExplorer() {
     if (debouncedSearch) params.search = debouncedSearch
     if (propertyFilter) params.property = propertyFilter
     if (glFilter) params.gl = parseInt(glFilter, 10)
+    if (lineItemGlFilter) params.line_item_gl = parseInt(lineItemGlFilter, 10)
 
     getInvoices(params)
       .then(r => { setInvoices(r.items); setTotal(r.total) })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
-  }, [page, debouncedSearch, propertyFilter, glFilter])
+  }, [page, debouncedSearch, propertyFilter, glFilter, lineItemGlFilter])
 
   useEffect(() => { fetchInvoices() }, [fetchInvoices])
 
   // Reset page when filters change
-  useEffect(() => { setPage(1) }, [propertyFilter, glFilter])
+  useEffect(() => { setPage(1) }, [propertyFilter, glFilter, lineItemGlFilter])
 
   function toggleRow(id: number) {
     setExpanded(prev => {
@@ -212,12 +219,19 @@ export default function InvoiceExplorer() {
         />
         <input
           className="filter-input filter-input-sm"
-          type="number"
-          placeholder="GL code"
+          type="text"
+          placeholder="Invoice GL Code"
           value={glFilter}
           onChange={e => { setGlFilter(e.target.value); setPage(1) }}
         />
-        {(debouncedSearch || propertyFilter || glFilter) && (
+        <input
+          className="filter-input filter-input-sm"
+          type="text"
+          placeholder="Line Item GL Code"
+          value={lineItemGlFilter}
+          onChange={e => { setLineItemGlFilter(e.target.value); setPage(1) }}
+        />
+        {(debouncedSearch || propertyFilter || glFilter || lineItemGlFilter) && (
           <button
             className="filter-clear"
             onClick={() => {
@@ -225,6 +239,7 @@ export default function InvoiceExplorer() {
               setDebouncedSearch('')
               setPropertyFilter('')
               setGlFilter('')
+              setLineItemGlFilter('')
               setPage(1)
             }}
           >
@@ -242,7 +257,7 @@ export default function InvoiceExplorer() {
           <div className="section-card" style={{ padding: 0 }}>
             <div className="table-result-count">
               {total.toLocaleString()} invoice{total !== 1 ? 's' : ''}
-              {(debouncedSearch || propertyFilter || glFilter) ? ' matched' : ' total'}
+              {(debouncedSearch || propertyFilter || glFilter || lineItemGlFilter) ? ' matched' : ' total'}
             </div>
             {invoices.length === 0 ? (
               <p className="empty-msg" style={{ padding: '1.5rem' }}>No invoices match the current filters.</p>
@@ -257,7 +272,8 @@ export default function InvoiceExplorer() {
                       <th style={{ textAlign: 'center' }}>Property</th>
                       <th style={{ textAlign: 'center' }}>Purchaser</th>
                       <th style={{ textAlign: 'center' }}>Invoice GL Code</th>
-                      <th style={{ textAlign: 'center' }}>Total</th>
+                      <th style={{ textAlign: 'center' }}>Item Subtotal before Tax</th>
+                      <th style={{ textAlign: 'center' }}>Tax</th>
                       <th style={{ textAlign: 'center' }}>Status</th>
                     </tr>
                   </thead>
@@ -282,7 +298,10 @@ export default function InvoiceExplorer() {
                                 : '—'}
                             </td>
                             <td style={{ textAlign: 'center' }}>
-                              {fmtCurrency(inv.total_amount)}
+                              {fmtCurrency(inv.subtotal)}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              {fmtCurrency(inv.tax)}
                             </td>
                             <td style={{ textAlign: 'center' }}>
                               {inv.needs_review
@@ -292,10 +311,11 @@ export default function InvoiceExplorer() {
                           </tr>
                           {open && (
                             <tr key={`${inv.id}-detail`} className="expanded-content">
-                              <td colSpan={8}>
+                              <td colSpan={9}>
                                 <LineItemsPanel
                                   invoiceNumber={inv.invoice_number}
                                   invoiceGLCode={inv.invoice_gl_code}
+                                  lineItemGlFilter={lineItemGlFilter}
                                 />
                               </td>
                             </tr>

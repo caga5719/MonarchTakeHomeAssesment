@@ -4,30 +4,51 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, text
 from app.database import get_session
+from app.auth import get_current_user, property_scope
 from app.models import InvoiceListItem, InvoiceDetail, LineItemDetail, PaginatedInvoices
+from app.table_models import User
 
 router = APIRouter(prefix="/api")
 
 
 @router.get("/invoices", response_model=PaginatedInvoices)
 def list_invoices(
-    property: Optional[str] = Query(None, description="Filter by property code (case-insensitive)"),
+    property: Optional[str] = Query(None, description="Filter by property code (admin only; non-admin always sees their own property)"),
     gl: Optional[int] = Query(None, description="Filter by invoice-level GL code"),
+    line_item_gl: Optional[int] = Query(None, description="Filter to invoices containing at least one line item with this assigned GL code"),
     search: Optional[str] = Query(None, description="Search invoice number, property code, or purchaser"),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=200),
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
-    """Paginated list of invoices with optional filters."""
+    """Paginated list of invoices with optional filters.
+
+    Non-admin users are automatically scoped to their assigned property_code;
+    any ?property= param they pass is ignored.
+    """
+    pc = property_scope(current_user)
+
     conditions = ["inv.processed = 1"]
     params: dict = {}
 
-    if property:
+    if pc:
+        # Non-admin: always restrict to their property (ignore ?property= param)
+        conditions.append("UPPER(inv.property_code) = :pc")
+        params["pc"] = pc
+    elif property:
+        # Admin with explicit property filter
         conditions.append("UPPER(inv.property_code) = UPPER(:property_filter)")
         params["property_filter"] = property
+
     if gl is not None:
         conditions.append("inv.invoice_gl_code = :gl_filter")
         params["gl_filter"] = gl
+    if line_item_gl is not None:
+        conditions.append(
+            "EXISTS (SELECT 1 FROM line_items li WHERE li.invoice_id = inv.id AND li.assigned_gl_code = :line_item_gl)"
+        )
+        params["line_item_gl"] = line_item_gl
     if search:
         like = f"%{search}%"
         conditions.append(
@@ -51,7 +72,8 @@ def list_invoices(
             gc.sdesc              AS invoice_gl_desc,
             inv.invoice_date,
             inv.purchaser,
-            ROUND(inv.total_amount, 2) AS total_amount,
+            ROUND(inv.subtotal, 2) AS subtotal,
+            ROUND(inv.tax, 2)      AS tax,
             inv.needs_review
         FROM invoices inv
         LEFT JOIN gl_codes gc ON gc.scode = inv.invoice_gl_code
@@ -71,7 +93,8 @@ def list_invoices(
             invoice_gl_desc=r["invoice_gl_desc"],
             invoice_date=r["invoice_date"],
             purchaser=r["purchaser"],
-            total_amount=r["total_amount"],
+            subtotal=r["subtotal"],
+            tax=r["tax"],
             needs_review=bool(r["needs_review"]),
         )
         for r in rows
@@ -81,8 +104,15 @@ def list_invoices(
 
 
 @router.get("/invoices/{invoice_number}", response_model=InvoiceDetail)
-def get_invoice(invoice_number: str, session: Session = Depends(get_session)):
-    """Full invoice record with classified line items."""
+def get_invoice(
+    invoice_number: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Full invoice record with classified line items.
+
+    Non-admin users can only retrieve invoices belonging to their property.
+    """
     inv = session.execute(
         text("""
         SELECT
@@ -97,6 +127,11 @@ def get_invoice(invoice_number: str, session: Session = Depends(get_session)):
 
     if inv is None:
         raise HTTPException(status_code=404, detail=f"Invoice '{invoice_number}' not found")
+
+    # Enforce property scope for non-admin users
+    pc = property_scope(current_user)
+    if pc and (inv["property_code"] is None or inv["property_code"].upper() != pc):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     li_rows = session.execute(
         text("""

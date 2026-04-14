@@ -207,7 +207,90 @@ Edge cases to handle:
 
 ---
 
-## 9. Assumptions
+## 9. User Profiles & Role-Based Data Scoping
+
+### Overview
+
+To ensure users only see data relevant to their responsibilities, the app supports a lightweight user profile system with username/password authentication and JWT-based session management. Users log in on first visit and their JWT is persisted in `localStorage`. All data scoping happens server-side via a `get_current_user` FastAPI dependency that decodes the token and applies property-code filters.
+
+### Roles
+
+| Role | Data access |
+|---|---|
+| **Admin** | All properties, all invoices, all pages |
+| **Manager** | Scoped to their assigned `property_code` |
+| **Operations** | Scoped to their assigned `property_code` |
+
+### Database Schema Addition
+
+```python
+class User(SQLModel, table=True):
+    __tablename__ = "users"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(unique=True)    # login credential
+    hashed_password: str                  # bcrypt hash — never store plaintext
+    name: str                             # display name
+    role: Optional[str] = None            # 'admin' | 'manager' | 'operations'
+    property_code: Optional[str] = None   # soft ref to properties.yardi_code (uppercase)
+    # Constraint: at least one of role or property_code must be non-NULL
+```
+
+**Validation rule**: `username`, `hashed_password`, and `name` are always required. At least one of `role` or `property_code` must be supplied. Both may be provided simultaneously (e.g., role = `manager` + property_code = `BPOH`).
+
+**Password hashing**: use `passlib[bcrypt]`. Never store or log plaintext passwords.
+
+### Authentication Flow
+
+1. User submits `username` + `password` to `POST /api/auth/token`
+2. Backend verifies the password against the bcrypt hash stored in `users`
+3. On success, the backend issues a signed JWT containing `{ "sub": username, "user_id": id, "role": role, "property_code": property_code }` with a configurable expiry (default 8 hours)
+4. Frontend stores the JWT in `localStorage` and attaches it to every subsequent request as `Authorization: Bearer <token>`
+5. A FastAPI dependency `get_current_user` decodes and validates the token on each protected request — no database lookup needed per-request
+
+**JWT secret**: stored in `backend/.env` as `JWT_SECRET`. Token algorithm: `HS256`.
+
+**New auth endpoints**:
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/auth/token` | Login — accepts `username` + `password` (form body), returns `{ "access_token": "...", "token_type": "bearer" }` |
+| `POST` | `/api/auth/register` | Create a new user — accepts `{ username, password, name, role, property_code }`, returns the created user (without `hashed_password`) |
+| `GET` | `/api/users/me` | Returns the current authenticated user's profile (decoded from token) |
+
+### API Scoping Pattern
+
+The `get_current_user` dependency is injected into every data endpoint. It:
+1. Extracts and verifies the `Authorization: Bearer <token>` header
+2. Decodes the JWT payload → returns `{ user_id, role, property_code }`
+3. If token is missing or invalid → returns `401 Unauthorized`
+
+Inside each endpoint handler:
+- If `current_user.role == 'admin'` or `current_user.property_code is None`: return unfiltered data
+- Otherwise: add `WHERE invoices.property_code = :property_code` (using `current_user.property_code`) to all queries
+
+No `user_id` is ever passed as a query parameter or URL path segment for data scoping — identity comes exclusively from the verified JWT.
+
+### Page-Level Scoping Rules
+
+| Page | Admin | Manager / Operations |
+|---|---|---|
+| GL Spend | All stat cards; all charts and table | Hide **Properties** stat card; all charts and table scoped to user's property |
+| Items Per GL | All data | All data scoped to user's property |
+| Items Per Property | Full table and chart | **Page hidden** — not accessible |
+| Invoice Explorer | All invoices | Only invoices for user's property |
+| GL Mismatches | All mismatches | Only mismatches for user's property |
+
+### Frontend Implementation
+
+- **Auth context**: a React context (`AuthContext`) holds the decoded user object (`id`, `name`, `role`, `property_code`) and the raw JWT string. On app load it reads the JWT from `localStorage`, decodes the payload, and validates the expiry. If absent or expired, redirects to `/login`.
+- **Login page** (`pages/Login.tsx`): username + password form; calls `POST /api/auth/token`; stores the returned JWT in `localStorage`; redirects to `/`.
+- **API calls**: all `fetch` wrappers in `src/api/index.ts` include `Authorization: Bearer <token>` on every request. A 401 response triggers a logout (clears `localStorage`) and redirects to `/login`.
+- **Conditional rendering**: components check `user.role === 'admin'` to show or hide the Properties stat card and the Items Per Property nav link.
+
+---
+
+## 10. Assumptions
 
 1. **Invoice format is consistent**: All PDFs are Amazon Business invoices with the same header layout. The parser does not need to handle arbitrary vendor formats.
 2. **Property codes are case-insensitive**: Invoices use both `aaoh` and `AAOH` style — the matching logic normalizes to uppercase.
@@ -217,7 +300,7 @@ Edge cases to handle:
 
 ---
 
-## 10. Known Limitations
+## 11. Known Limitations
 
 - **PDF layout brittleness**: If Amazon changes their invoice template, the regex-based parser will need updating. A more robust approach would use a vision model to parse invoice images.
 - **Classification confidence is unverified**: There is no ground-truth labeled dataset to measure classification accuracy against. The GL mismatch view helps surface potential errors for human review.
@@ -226,7 +309,7 @@ Edge cases to handle:
 
 ---
 
-## 11. What I'd Change for Production
+## 12. What I'd Change for Production
 
 1. **Replace SQLite with PostgreSQL**: Better concurrency, full-text search on descriptions, and easier horizontal scaling.
 2. **Async job queue (Celery + Redis)**: PDF ingestion and AI classification are slow operations. In production, these would be background jobs with progress tracking, not synchronous request handlers.

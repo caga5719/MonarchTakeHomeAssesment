@@ -12,12 +12,14 @@ TakeHomeAssesment/
 │   ├── app/
 │   │   ├── main.py              # FastAPI app entry point
 │   │   ├── database.py          # SQLite connection + session
-│   │   ├── models.py            # SQLAlchemy ORM models
-│   │   ├── schema.sql           # Raw DDL (source of truth for DB shape)
+│   │   ├── table_models.py      # SQLModel table definitions (schema source of truth)
+│   │   ├── models.py            # Pydantic response models
+│   │   ├── auth.py              # JWT utilities + get_current_user dependency
 │   │   ├── seed.py              # Seeds GL codes + properties from xlsx files
 │   │   ├── ingest.py            # PDF parsing pipeline
 │   │   ├── classify.py          # Claude API classification service
 │   │   └── routers/
+│   │       ├── auth.py          # /api/auth/token, /api/auth/register, /api/users/me
 │   │       ├── gl.py            # /api/gl-spend, /api/items-per-gl
 │   │       ├── properties.py    # /api/items-per-property
 │   │       ├── invoices.py      # /api/invoices, /api/invoices/{id}
@@ -35,7 +37,10 @@ TakeHomeAssesment/
 │   │       ├── ItemsPerGL.tsx
 │   │       ├── ItemsPerProperty.tsx
 │   │       ├── InvoiceExplorer.tsx
-│   │       └── Mismatches.tsx
+│   │       ├── Mismatches.tsx
+│   │       └── Login.tsx
+│   │   ├── context/
+│   │   │   └── AuthContext.tsx
 │   ├── package.json
 │   └── vite.config.ts
 ├── GL List.xlsx
@@ -442,60 +447,123 @@ This produces ~120–140 codes and captures edge cases like `6738 HARDWARE`, `67
 
 ---
 
-## Phase 6 — Extended Views, Polish, and README
+## Phase 7 — User Profiles, Authentication & Role-Based Data Scoping
 
-**Goal**: Add the bonus views, finalize styling, ensure the app runs cleanly end-to-end from a fresh clone, and write the README.
+**Goal**: Add a lightweight username/password authentication layer with JWT session management. Users log in to receive a signed token; all data endpoints are protected and automatically scoped to the authenticated user's role and property assignment.
 
-**Prerequisites**: Phase 5 complete — all required views working.
+**Prerequisites**: Phase 6 complete — full dashboard running. Backend at `localhost:8000`, frontend at `localhost:5173`.
 
 **Context to load**:
-- `Design/design.md` sections 8 (extended views) and 11 (production considerations)
-- `Design/build-plan.md` Phase 4 endpoint table (mismatches endpoint)
+- `Design/design.md` section 9 (full auth design — read the entire section)
+- `backend/app/table_models.py` (existing schema to extend)
+- `backend/app/database.py` (session dependency)
+- `backend/app/main.py` (router registration)
+
+### New dependencies
+
+```bash
+cd backend
+uv add passlib[bcrypt] python-jose[cryptography]
+```
+
+Add to `backend/.env` (and `.env.example`):
+```
+JWT_SECRET=replace-with-a-long-random-string
+JWT_ALGORITHM=HS256
+JWT_EXPIRE_HOURS=8
+```
 
 ### Tasks
 
-1. **Invoice Explorer page** (`pages/InvoiceExplorer.tsx`):
-   - Search bar (filters by invoice number, property code, or purchaser name) — debounced, calls `/api/invoices?search=`
-   - Filter dropdowns: by property code, by invoice-level GL
-   - Paginated table of invoices (invoice #, date, property, purchaser, total, invoice GL)
-   - Click a row → expand (or navigate) to show all line items with their **AI-assigned GL code** vs the invoice-level GL — highlight mismatches in amber
+1. **Extend `table_models.py`** — add the `User` model:
+   ```python
+   class User(SQLModel, table=True):
+       __tablename__ = "users"
 
-2. **GL Mismatch view** (`pages/Mismatches.tsx`):
-   - Intro text explaining what a mismatch means (AI disagrees with buyer's coding)
-   - Table: invoice number, property, item description, invoice GL (original), AI-assigned GL, subtotal
-   - Color-code: same category family (e.g., both in 67xx) = yellow; different category family = red
-   - Summary stat: "X of Y line items (Z%) were reclassified by AI"
-
-3. **Polish**:
-   - Consistent color palette using Recharts' `COLORS` array
-   - Responsive layout (nav collapses on small screens)
-   - Empty states (show a message when no data matches a filter)
-   - Error boundaries around chart components so one failed fetch doesn't crash the page
-
-4. **End-to-end startup script** (`run.sh`):
-   ```bash
-   #!/bin/bash
-   set -e
-   cd backend && uv run python app/seed.py && uv run python app/ingest.py && uv run python app/classify.py
-   uv run uvicorn app.main:app --port 8000 &
-   cd ../frontend && npm run build && npx serve dist -l 3000
+       id: Optional[int] = Field(default=None, primary_key=True)
+       username: str = Field(unique=True)
+       hashed_password: str
+       name: str
+       role: Optional[str] = None            # 'admin' | 'manager' | 'operations'
+       property_code: Optional[str] = None   # soft ref to properties.yardi_code (uppercase)
    ```
-   Or simpler: document how to run backend + frontend separately in README.
+   `init_db()` will create the table automatically on next startup.
 
-5. **Write `README.md`** (manually written, not generated) covering:
-   - What the app does
-   - How to run it (step-by-step: set `ANTHROPIC_API_KEY`, run seed/ingest/classify, start API, start frontend)
-   - Architecture and design decisions (reference `Design/design.md`)
-   - Assumptions made about the data
-   - Known limitations
-   - What I'd build or change for production
+2. **Write `backend/app/auth.py`** — auth utilities:
+   - `pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")`
+   - `hash_password(plain: str) -> str` — wraps `pwd_context.hash()`
+   - `verify_password(plain: str, hashed: str) -> bool` — wraps `pwd_context.verify()`
+   - `create_access_token(data: dict) -> str` — signs a JWT with `JWT_SECRET`, sets `exp` to `now + JWT_EXPIRE_HOURS`
+   - `get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)) -> User`:
+     - Decodes the JWT; raises `HTTPException(401)` if invalid or expired
+     - Returns the `User` row from DB (using `sub` / `user_id` from payload)
+   - `oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")`
+
+3. **Write `backend/app/routers/auth.py`** — auth endpoints:
+   - `POST /api/auth/token`:
+     - Accepts `OAuth2PasswordRequestForm` (standard form body: `username`, `password`)
+     - Looks up user by `username`; calls `verify_password`; raises `401` on failure
+     - Calls `create_access_token({"sub": user.username, "user_id": user.id, "role": user.role, "property_code": user.property_code})`
+     - Returns `{"access_token": token, "token_type": "bearer"}`
+   - `POST /api/auth/register`:
+     - Accepts `{username, password, name, role, property_code}` (JSON body)
+     - Validates: `username` unique; at least one of `role` or `property_code` non-null
+     - Calls `hash_password(password)`; inserts `User`; returns created user (omit `hashed_password` from response)
+   - `GET /api/users/me`:
+     - Depends on `get_current_user`; returns the current user's profile
+
+4. **Update all data routers** — add `current_user: User = Depends(get_current_user)` to every endpoint in `routers/gl.py`, `routers/properties.py`, `routers/invoices.py`, and `routers/summary.py`:
+   - Extract a `property_filter` helper:
+     ```python
+     def property_filter(current_user: User) -> Optional[str]:
+         if current_user.role == "admin" or current_user.property_code is None:
+             return None   # unscoped
+         return current_user.property_code.upper()
+     ```
+   - In every query that joins `invoices`, add `AND inv.property_code = :pc` when `property_filter` returns a non-None value
+   - Use SQLAlchemy named parameters (`:pc`) — never string-format user data into queries
+
+5. **Register the auth router in `main.py`**:
+   ```python
+   from app.routers import auth
+   app.include_router(auth.router)
+   ```
+
+6. **Frontend — `AuthContext`** (`frontend/src/context/AuthContext.tsx`):
+   - Holds `{ user: DecodedUser | null, token: string | null, login, logout }`
+   - On mount: reads `localStorage.getItem("jwt_token")`; decodes the payload with `jwt-decode`; checks `exp`; sets context or clears if expired
+   - `login(token)`: stores in `localStorage`, decodes and sets user in context
+   - `logout()`: clears `localStorage`, sets user/token to null, calls `navigate("/login")`
+   - Add `jwt-decode` to frontend dependencies: `npm install jwt-decode`
+
+7. **Frontend — Login page** (`frontend/src/pages/Login.tsx`):
+   - Username + password form
+   - Submits as `application/x-www-form-urlencoded` to `POST /api/auth/token` (OAuth2 standard)
+   - On success: calls `AuthContext.login(token)`; redirects to `/`
+   - On failure: shows inline error message
+
+8. **Frontend — `api/index.ts` updates**:
+   - Add a `getAuthHeaders()` helper that returns `{ Authorization: "Bearer <token>" }` when a token is in `localStorage`
+   - Wrap every `fetch` call to include these headers
+   - Add a response interceptor: if any response returns `401`, call `AuthContext.logout()`
+
+9. **Frontend — Route protection** (`frontend/src/App.tsx`):
+   - Wrap all dashboard routes in a `<ProtectedRoute>` component that reads `AuthContext`; redirects to `/login` if no valid user
+   - Add `/login` and `/register` as public routes (not wrapped)
+
+10. **Frontend — Conditional rendering updates**:
+    - In `GLSpend.tsx`: hide the Properties `StatCard` when `user.role !== 'admin'`
+    - In `Layout.tsx` / nav: hide the "Items Per Property" nav link when `user.role !== 'admin'`
+    - In `ItemsPerProperty.tsx`: render a "Not authorized" message if a non-admin somehow navigates there directly
 
 ### Done When
-- Invoice Explorer search works with real queries
-- Mismatch view loads and shows meaningful data
-- `README.md` is complete and accurate
-- The app can be started from scratch following only the README instructions
-- All four bonus views are accessible from the nav
+- `POST /api/auth/register` creates a user and returns a profile (without `hashed_password`)
+- `POST /api/auth/token` with correct credentials returns a JWT; invalid credentials return `401`
+- All data endpoints return `401` when called without a valid `Authorization` header
+- An admin user sees all properties and all data across every page
+- A manager/operations user sees only data for their `property_code`; the Items Per Property page is hidden from their nav
+- The login page redirects to `/` on success; an expired or missing token redirects to `/login`
+- JWT secret is loaded from `backend/.env` — not hardcoded in any source file
 
 ---
 

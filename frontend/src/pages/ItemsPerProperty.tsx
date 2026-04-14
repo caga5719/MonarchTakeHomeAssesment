@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
@@ -23,7 +23,7 @@ const columns: Column<ItemsPerPropertyEntry>[] = [
   { key: 'invoice_count', label: 'Invoices', sortable: true, align: 'right' },
   {
     key: 'total_spend',
-    label: 'Total Spend',
+    label: 'Total Spend Before Tax',
     sortable: true,
     align: 'right',
     render: row => fmtFull(row.total_spend),
@@ -34,6 +34,7 @@ export default function ItemsPerProperty() {
   const [data, setData] = useState<ItemsPerPropertyEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [propertySearch, setPropertySearch] = useState('')
 
   useEffect(() => {
     getItemsPerProperty()
@@ -41,6 +42,11 @@ export default function ItemsPerProperty() {
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
+
+  const filteredData = useMemo(() => {
+    const term = propertySearch.trim().toUpperCase()
+    return term ? data.filter(r => r.property_code.toUpperCase().includes(term)) : data
+  }, [data, propertySearch])
 
   if (loading) return <LoadingSpinner />
   if (error) return <p className="error-msg">Failed to load: {error}</p>
@@ -86,11 +92,23 @@ export default function ItemsPerProperty() {
 
       <div className="section-card">
         <h2 className="chart-title">All Properties</h2>
+        <div className="filter-bar">
+          <input
+            className="filter-input filter-input-sm"
+            type="text"
+            placeholder="Property code"
+            value={propertySearch}
+            onChange={e => setPropertySearch(e.target.value)}
+          />
+          {propertySearch && (
+            <button className="filter-clear" onClick={() => setPropertySearch('')}>Clear</button>
+          )}
+        </div>
         <DataTable
           columns={columns}
-          data={data}
+          data={filteredData}
           rowKey={r => r.property_code}
-          emptyMessage="No property data yet."
+          emptyMessage="No properties match."
         />
       </div>
     </div>

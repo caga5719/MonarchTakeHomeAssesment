@@ -167,6 +167,11 @@ export default function Mismatches() {
       {/* Summary stats */}
       <div className="stat-grid" style={{ marginBottom: '1.5rem' }}>
         <div className="stat-card">
+          <div className="stat-label">Needs Review</div>
+          <div className="stat-value" style={{ color: '#7c3aed' }}>{needsReview.length.toLocaleString()}</div>
+          <div className="stat-sub">items AI couldn't confidently classify</div>
+        </div>
+        <div className="stat-card">
           <div className="stat-label">Total Mismatches</div>
           <div className="stat-value">{mismatches.length.toLocaleString()}</div>
           <div className="stat-sub">line items reclassified by AI</div>
@@ -180,11 +185,6 @@ export default function Mismatches() {
           <div className="stat-label">Different Family</div>
           <div className="stat-value" style={{ color: '#dc2626' }}>{farCount.toLocaleString()}</div>
           <div className="stat-sub">significant reclassification</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Needs Review</div>
-          <div className="stat-value" style={{ color: '#7c3aed' }}>{needsReview.length.toLocaleString()}</div>
-          <div className="stat-sub">items AI couldn't confidently classify</div>
         </div>
       </div>
 

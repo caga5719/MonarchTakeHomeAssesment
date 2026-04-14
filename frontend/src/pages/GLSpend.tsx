@@ -4,6 +4,7 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts'
 import { getSummary, getGLSpend, type Summary, type GLSpendItem } from '../api'
+import { useAuth } from '../context/AuthContext'
 import StatCard from '../components/StatCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import DataTable, { type Column } from '../components/DataTable'
@@ -67,6 +68,8 @@ const columns: Column<GLSpendItem>[] = [
 ]
 
 export default function GLSpend() {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const [summary, setSummary] = useState<Summary | null>(null)
   const [data, setData] = useState<GLSpendItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -96,7 +99,7 @@ export default function GLSpend() {
           <StatCard label="Total Invoices" value={summary.total_invoices.toLocaleString()} />
           <StatCard label="Classified Spend" value={fmtFull(totalClassifiedSpend)} />
           <StatCard label="Unique GL Codes" value={data.length.toLocaleString()} />
-          <StatCard label="Properties" value={summary.properties_count.toLocaleString()} />
+          {isAdmin && <StatCard label="Properties" value={summary.properties_count.toLocaleString()} />}
           <StatCard
             label="Total Processed Line Items"
             value={summary.total_line_items.toLocaleString()}

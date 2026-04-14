@@ -4,6 +4,31 @@ from typing import Optional
 from sqlmodel import SQLModel as BaseModel
 
 
+# ── /api/auth/token ───────────────────────────────────────────────────────────
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+
+
+# ── /api/auth/register  /api/users/me ────────────────────────────────────────
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    name: str
+    role: Optional[str] = None            # 'admin' | 'manager' | 'operations'
+    property_code: Optional[str] = None
+
+
+class UserResponse(BaseModel):
+    id: Optional[int]
+    username: str
+    name: str
+    role: Optional[str]
+    property_code: Optional[str]
+
+
 # ── /api/summary ─────────────────────────────────────────────────────────────
 
 class TopGL(BaseModel):
@@ -69,7 +94,8 @@ class InvoiceListItem(BaseModel):
     invoice_gl_desc: Optional[str]
     invoice_date: Optional[str]
     purchaser: Optional[str]
-    total_amount: Optional[float]
+    subtotal: Optional[float]
+    tax: Optional[float]
     needs_review: bool
 
 class PaginatedInvoices(BaseModel):

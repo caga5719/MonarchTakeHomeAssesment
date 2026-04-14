@@ -1,16 +1,30 @@
 """Property-related endpoints: /api/items-per-property."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, text
 from app.database import get_session
+from app.auth import get_current_user
 from app.models import ItemsPerPropertyEntry
+from app.table_models import User
 
 router = APIRouter(prefix="/api")
 
 
 @router.get("/items-per-property", response_model=list[ItemsPerPropertyEntry])
-def items_per_property(session: Session = Depends(get_session)):
-    """Line-item count, total spend, and invoice count per property code, sorted by spend descending."""
+def items_per_property(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Line-item count, total spend, and invoice count per property code.
+
+    Admin-only — non-admin users receive 403.
+    """
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This view is only available to admin users",
+        )
+
     rows = session.execute(text("""
         SELECT
             inv.property_code,

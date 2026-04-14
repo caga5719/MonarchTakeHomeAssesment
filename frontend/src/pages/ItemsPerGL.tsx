@@ -22,19 +22,19 @@ function LineItemRows({ items }: { items: GLLineItemDetail[] }) {
     <table className="data-table nested-table">
       <thead>
         <tr>
-          <th>Invoice #</th>
-          <th>Property</th>
-          <th>Description</th>
-          <th style={{ textAlign: 'right' }}>Subtotal</th>
+          <th style={{ textAlign: 'center' }}>Invoice #</th>
+          <th style={{ textAlign: 'center' }}>Property</th>
+          <th style={{ textAlign: 'center' }}>Description</th>
+          <th style={{ textAlign: 'center' }}>Subtotal</th>
         </tr>
       </thead>
       <tbody>
         {items.map((item, i) => (
           <tr key={i}>
-            <td className="mono">{item.invoice_number}</td>
-            <td>{item.property_code ?? '—'}</td>
-            <td className="desc-cell">{item.description}</td>
-            <td style={{ textAlign: 'right' }}>
+            <td className="mono" style={{ textAlign: 'center' }}>{item.invoice_number}</td>
+            <td style={{ textAlign: 'center' }}>{item.property_code ?? '—'}</td>
+            <td className="desc-cell" style={{ textAlign: 'center' }}>{item.description}</td>
+            <td style={{ textAlign: 'center' }}>
               {item.subtotal != null ? fmtFull(item.subtotal) : '—'}
             </td>
           </tr>

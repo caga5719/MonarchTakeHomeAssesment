@@ -1,5 +1,7 @@
 /** Typed fetch wrappers for the FastAPI backend. */
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 export interface Summary {
   total_invoices: number
   total_spend: number
@@ -47,7 +49,8 @@ export interface InvoiceListItem {
   invoice_gl_desc: string | null
   invoice_date: string | null
   purchaser: string | null
-  total_amount: number | null
+  subtotal: number | null
+  tax: number | null
   needs_review: boolean
 }
 
@@ -104,11 +107,73 @@ export interface NeedsReviewItem {
   invoice_gl_desc: string | null
 }
 
+// ── Auth helpers ──────────────────────────────────────────────────────────────
+
+const TOKEN_KEY = 'jwt_token'
+
+function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+function getAuthHeaders(): HeadersInit {
+  const token = getToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+// ── Core fetch wrapper ────────────────────────────────────────────────────────
+
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(path)
+  const res = await fetch(path, { headers: getAuthHeaders() })
+  if (res.status === 401) {
+    // Token missing, invalid, or expired — clear storage and redirect to login
+    localStorage.removeItem(TOKEN_KEY)
+    window.location.href = '/login'
+    throw new Error('Unauthorized')
+  }
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
   return res.json()
 }
+
+// ── Auth API ──────────────────────────────────────────────────────────────────
+
+/** Exchange username + password for a JWT. Returns the raw token string. */
+export async function loginUser(username: string, password: string): Promise<string> {
+  const body = new URLSearchParams({ username, password })
+  const res = await fetch('/api/auth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ detail: 'Login failed' }))
+    throw new Error(data.detail ?? 'Login failed')
+  }
+  const data: { access_token: string; token_type: string } = await res.json()
+  return data.access_token
+}
+
+export interface RegisterPayload {
+  username: string
+  password: string
+  name: string
+  role: string | null
+  property_code: string | null
+}
+
+/** Create a new user account. Returns the created user profile. */
+export async function registerUser(payload: RegisterPayload): Promise<void> {
+  const res = await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ detail: 'Registration failed' }))
+    throw new Error(data.detail ?? 'Registration failed')
+  }
+}
+
+// ── Data API ──────────────────────────────────────────────────────────────────
 
 export const getSummary = () => get<Summary>('/api/summary')
 export const getGLSpend = () => get<GLSpendItem[]>('/api/gl-spend')
@@ -120,6 +185,7 @@ export const getNeedsReview = () => get<NeedsReviewItem[]>('/api/needs-review')
 export function getInvoices(params: {
   property?: string
   gl?: number
+  line_item_gl?: number
   search?: string
   page?: number
   page_size?: number
@@ -127,6 +193,7 @@ export function getInvoices(params: {
   const qs = new URLSearchParams()
   if (params.property) qs.set('property', params.property)
   if (params.gl != null) qs.set('gl', String(params.gl))
+  if (params.line_item_gl != null) qs.set('line_item_gl', String(params.line_item_gl))
   if (params.search) qs.set('search', params.search)
   if (params.page != null) qs.set('page', String(params.page))
   if (params.page_size != null) qs.set('page_size', String(params.page_size))

@@ -49,6 +49,17 @@ class Invoice(SQLModel, table=True):
     processed: int = 0                            # 1 when Claude has classified all line items
 
 
+class User(SQLModel, table=True):
+    __tablename__ = "users"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(unique=True)
+    hashed_password: str
+    name: str
+    role: Optional[str] = None            # 'admin' | 'manager' | 'operations'
+    property_code: Optional[str] = None   # soft ref to properties.yardi_code (uppercase)
+
+
 class LineItem(SQLModel, table=True):
     __tablename__ = "line_items"
     __table_args__ = (
