@@ -147,12 +147,12 @@ All line items that have been classified to a GL code are individually summed wi
 ---
 
 ## Known Limitations
-- Line item to general ledger account classification confidence is not stable or verifiable.
-- PDF extraction is only tailored to Amazon Business Invoices.
-- Unable to upload invoice PDF files from the front end to be classified.
-- Processing 100 invoices takes upwards of 10 minutes as the Claude (haiku-4-5) API is set up to be synchronous on the platform.
-- Unable to write corrections to the database for invoices and line items needing review. There is also no role management established for who can and cannot edit that data.
-- No accounting on the dashboard for taxes and discounts/promotions on invoices and line items.
+**Line item to general ledger account classification confidence is not stable or verifiable.**
+**PDF extraction is only tailored to Amazon Business Invoices.**
+**Unable to upload invoice PDF files from the front end to be classified.**
+**Processing 100 invoices takes upwards of 10 minutes as the Claude (haiku-4-5) API is set up to be synchronous on the platform.**
+**Unable to write corrections to the database for invoices and line items needing review. There is also no role management established for who can and cannot edit that data.**
+**No accounting on the dashboard for taxes and discounts/promotions on invoices and line items**
 
 ---
 
