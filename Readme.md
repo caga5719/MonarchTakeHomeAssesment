@@ -1,4 +1,4 @@
-# Monarch Invoice Classifier
+# Monarch Invoice Classifier - Carlos Garcia
 
 ## What the App Does
 
