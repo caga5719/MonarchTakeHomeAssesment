@@ -13,7 +13,7 @@ This is an invoice accounting platform that works to extract and classify invoic
 ### Prerequisites
 
 - Python 3.12+ with [uv](https://docs.astral.sh/uv/)
-- Node.js 18+ with npm
+- Node.js 18+ with npm (https://nodejs.org/en/download)
 - An [Anthropic API key](https://console.anthropic.com/)
 
 ### 1. Set Up Environment Variables
@@ -33,7 +33,7 @@ uv sync
 ```
 
 ### 3. Seed Reference Data (GL codes + Properties)
- ***NOTE: If the database is cleared, this will need to be run before starting up the app as there is no way to seed data from the frontend if it doesn't already exist***.
+ **NOTE: If the database is cleared, this will need to be run before starting up the app as there is no way to seed data from the frontend if it doesn't already exist.**
 
 ```bash
 cd backend
@@ -41,13 +41,13 @@ uv run python app/seed.py
 ```
 
 ### 4. Ingest Invoice PDFs
-***NOTE: If database is cleared this will need to be ran after seeding data (seen above) as there is no way to classify invoices from the front end.***
+**NOTE: If database is cleared this will need to be ran after seeding data (seen above) as there is no way to classify invoices from the front end.**
 ```bash
 uv run python app/ingest.py
 ```
 
 ### 5. Classify Line Items with AI
-***NOTE: If database is cleared this will need to be ran after ingesting invoices (seen above) as there is no way to classify invoices from the front end. You will also need an Anthropic API key and an account with API useage credits to spare***.
+**NOTE: If database is cleared this will need to be ran after ingesting invoices (seen above) as there is no way to classify invoices from the front end. You will also need an Anthropic API key and an account with API useage credits to spare**.
 ```bash
 uv run python app/classify.py
 ```
@@ -72,6 +72,15 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
+**NOTE: To get past the login dashboard you can either create an account (set to Admin role for view of all data) or use the following test accounts below:**
+
+    user: TD_12
+    pass: 1234
+    role: Admin
+
+    user: CG_12
+    pass: 1234
+    role: Operations (Property Scoped Invoice Data View)
 ---
 
 ## Architecture and Design Decisions
