@@ -15,35 +15,39 @@ function Nav() {
   const isAdmin = user?.role === 'admin'
 
   return (
-    <nav className="top-nav">
-      <span className="nav-brand">Monarch Invoices</span>
-      <div className="nav-links">
-        <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-          GL Spend
-        </NavLink>
-        <NavLink to="/items-per-gl" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-          Items Per GL
-        </NavLink>
-        {isAdmin && (
-          <NavLink to="/items-per-property" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            Items Per Property
-          </NavLink>
+    <header className="nav-header">
+      <div className="top-nav">
+        <span className="nav-brand">Monarch Invoice Classifier</span>
+        {user && (
+          <div className="nav-user">
+            <span className="nav-user-name">{user.sub}</span>
+            {user.role && <span className="nav-user-role">{user.role}</span>}
+            <button className="nav-logout-btn" onClick={logout}>Sign out</button>
+          </div>
         )}
-        <NavLink to="/invoices" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-          Invoice Explorer
-        </NavLink>
-        <NavLink to="/mismatches" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-          Mismatches
-        </NavLink>
       </div>
-      {user && (
-        <div className="nav-user">
-          <span className="nav-user-name">{user.sub}</span>
-          {user.role && <span className="nav-user-role">{user.role}</span>}
-          <button className="nav-logout-btn" onClick={logout}>Sign out</button>
+      <nav className="sub-nav">
+        <div className="nav-links">
+          <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            GL Spend
+          </NavLink>
+          <NavLink to="/items-per-gl" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            Items Per GL
+          </NavLink>
+          {isAdmin && (
+            <NavLink to="/items-per-property" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              Items Per Property
+            </NavLink>
+          )}
+          <NavLink to="/invoices" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            Invoice Explorer
+          </NavLink>
+          <NavLink to="/mismatches" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            Mismatches
+          </NavLink>
         </div>
-      )}
-    </nav>
+      </nav>
+    </header>
   )
 }
 

@@ -144,7 +144,7 @@ export default function ItemsPerGL() {
                 <th>GL Code</th>
                 <th>Description</th>
                 <th style={{ textAlign: 'right' }}>Items</th>
-                <th style={{ textAlign: 'right' }}>Total Spend</th>
+                <th style={{ textAlign: 'right' }}>Total Spend Before Tax</th>
               </tr>
             </thead>
             <tbody>

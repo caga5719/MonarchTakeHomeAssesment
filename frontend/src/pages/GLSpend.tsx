@@ -7,7 +7,6 @@ import { getSummary, getGLSpend, type Summary, type GLSpendItem } from '../api'
 import { useAuth } from '../context/AuthContext'
 import StatCard from '../components/StatCard'
 import LoadingSpinner from '../components/LoadingSpinner'
-import DataTable, { type Column } from '../components/DataTable'
 
 const COLORS = [
   '#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6',
@@ -53,19 +52,6 @@ function renderPieLabel({
   )
 }
 
-
-const columns: Column<GLSpendItem>[] = [
-  { key: 'gl_code', label: 'GL Code', sortable: true },
-  { key: 'gl_desc', label: 'Description', sortable: true },
-  { key: 'item_count', label: 'Items', sortable: true, align: 'right' },
-  {
-    key: 'total_spend',
-    label: 'Total Spend',
-    sortable: true,
-    align: 'right',
-    render: row => fmtFull(row.total_spend),
-  },
-]
 
 export default function GLSpend() {
   const { user } = useAuth()
@@ -177,15 +163,6 @@ export default function GLSpend() {
         </div>
       </div>
 
-      <div className="section-card">
-        <h2 className="chart-title">All GL Categories</h2>
-        <DataTable
-          columns={columns}
-          data={data}
-          rowKey={r => r.gl_code}
-          emptyMessage="No classified line items yet."
-        />
-      </div>
     </div>
   )
 }

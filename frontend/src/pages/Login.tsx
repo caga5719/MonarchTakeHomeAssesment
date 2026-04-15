@@ -73,7 +73,7 @@ export default function Login() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-header">
-          <span className="login-brand">Monarch Invoices</span>
+          <span className="login-brand">Monarch Invoice Classifier</span>
         </div>
 
         {/* Tab toggle */}
